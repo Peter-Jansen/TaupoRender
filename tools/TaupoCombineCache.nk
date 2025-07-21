@@ -1,0 +1,262 @@
+Group {
+ name TaupoCombineCache
+ tile_color 0x9c0000ff
+ selected true
+ addUserKnob {20 User}
+ addUserKnob {26 taupo_render_title l "" +STARTLINE T "<font size=\"+5\"> Taupo Combine Cache"}
+ addUserKnob {26 about l "" +STARTLINE T "<font style=\"color: #666666;\">v1.0 | <a href=\"https://www.linkedin.com/in/petejans/\" style=\"color: #6786b8;\">Peter Jansen</a>"}
+ addUserKnob {26 "" +STARTLINE}
+ addUserKnob {41 useGPUIfAvailable l "Use GPU if available" T BlinkScript2.useGPUIfAvailable}
+ addUserKnob {41 kernelSourceFile l "Kernel File" +INVISIBLE T BlinkScript2.kernelSourceFile}
+ addUserKnob {41 reloadKernelSourceFile l Load +INVISIBLE T BlinkScript2.reloadKernelSourceFile}
+}
+ Input {
+  inputs 0
+  name Cache_B
+  xpos -470
+  ypos -566
+ }
+ Constant {
+  inputs 0
+  channels rgb
+  format "32 32 0 0 32 32 1 32"
+  name Constant2
+  xpos -369
+  ypos -492
+ }
+set Nb73d8c00 [stack 0]
+ Switch {
+  inputs 2
+  which {{"\[exists parent.input0]"}}
+  name Switch2
+  xpos -470
+  ypos -353
+ }
+ Dot {
+  name Dot3
+  xpos -436
+  ypos -260
+ }
+set Nb7366000 [stack 0]
+ Dot {
+  name Dot1
+  xpos -436
+  ypos 116
+ }
+set Nb7366400 [stack 0]
+ Dot {
+  name Dot6
+  xpos -436
+  ypos 742
+ }
+set Nb7366800 [stack 0]
+add_layer {taupo_utility taupo_utility.size taupo_utility.age taupo_utility.life taupo_utility.norm_age}
+ Shuffle2 {
+  fromInput1 {{0} B}
+  in1 taupo_utility
+  fromInput2 {{0} B}
+  mappings "4 taupo_utility.size 0 0 rgba.red 0 0 taupo_utility.age 0 1 rgba.green 0 1 taupo_utility.life 0 2 rgba.blue 0 2 taupo_utility.norm_age 0 3 rgba.alpha 0 3"
+  name Shuffle5
+  xpos -755
+  ypos 739
+ }
+ Input {
+  inputs 0
+  name Cache_A
+  xpos -264
+  ypos -568
+  number 1
+ }
+push $Nb73d8c00
+ Switch {
+  inputs 2
+  which {{"\[exists parent.input1]"}}
+  name Switch1
+  xpos -264
+  ypos -349
+ }
+ Dot {
+  name Dot5
+  xpos -230
+  ypos -261
+ }
+ Dot {
+  name Dot4
+  xpos -230
+  ypos -113
+ }
+set Nb7367800 [stack 0]
+ Dot {
+  name Dot9
+  xpos -230
+  ypos 318
+ }
+set Nb7367c00 [stack 0]
+ Dot {
+  name Dot11
+  xpos -230
+  ypos 944
+ }
+set Nb7384000 [stack 0]
+ Shuffle2 {
+  fromInput1 {{0} B}
+  in1 taupo_utility
+  fromInput2 {{0} B}
+  mappings "4 taupo_utility.size 0 0 rgba.red 0 0 taupo_utility.age 0 1 rgba.green 0 1 taupo_utility.life 0 2 rgba.blue 0 2 taupo_utility.norm_age 0 3 rgba.alpha 0 3"
+  name Shuffle6
+  xpos -571
+  ypos 941
+ }
+ Constant {
+  inputs 0
+  channels rgb
+  format "32 32 0 0 32 32 1 32"
+  name Constant1
+  xpos -1191
+  ypos -208
+ }
+ Reformat {
+  type "to box"
+  box_width {{"sqrt((Cache_B.width * Cache_B.height) + (Cache_A.width * Cache_A.height) )"}}
+  box_height {{"sqrt((Cache_B.width * Cache_B.height) + (Cache_A.width * Cache_A.height) )"}}
+  resize distort
+  name Reformat1
+  xpos -1191
+  ypos -116
+ }
+set Nb7384c00 [stack 0]
+ Dot {
+  name Dot2
+  xpos -1157
+  ypos 318
+ }
+set Nb7385400 [stack 0]
+ Dot {
+  name Dot12
+  xpos -1157
+  ypos 944
+ }
+ BlinkScript {
+  inputs 3
+  recompileCount 15
+  kernelSource "// Taupo Combine\n\nkernel Taupo_Combine_Cache : ImageComputationKernel<ePixelWise> \{\n    Image<eRead, eAccessRandom, eEdgeClamped> format_img; \n    Image<eRead, eAccessRandom, eEdgeClamped> Cache_A; \n    Image<eRead, eAccessRandom, eEdgeClamped> Cache_B; \n    Image<eWrite, eAccessPoint> dst; \n\n    local:\n    int format_w, format_h;\n    int Cache_A_w, Cache_A_h;\n    int Cache_B_w, Cache_B_h;\n    int dst_w, dst_h;\n\n    int Cache_A_count;\n    int Cache_B_count;\n\n\n    void init()\{\n        format_w = format_img.bounds.width();\n        format_h = format_img.bounds.height();\n        Cache_A_w = Cache_A.bounds.width();\n        Cache_A_h = Cache_A.bounds.height();\n        Cache_B_w = Cache_B.bounds.width();\n        Cache_B_h = Cache_B.bounds.height();\n        dst_w = dst.bounds.width();\n        dst_h = dst.bounds.height();    \n        \n        Cache_B_count = Cache_B_w * Cache_B_h;\n    \}\n\n\n    void process(int2 pos)\{\n        int id = pos.x + (pos.y * format_w);\n        int2 Cache_B_sample;\n        int2 Cache_A_sample;\n        \n        if(id < Cache_B_count) \{\n            Cache_B_sample.y = floor( id / Cache_B_w  );\n            Cache_B_sample.x = id - (Cache_B_sample.y *  Cache_B_w);\n            dst() = Cache_B(Cache_B_sample.x, Cache_B_sample.y);\n            // Copy from Cache_B\n        \}\n        else\{\n            id = id - Cache_B_count;\n            Cache_A_sample.y = floor( id / Cache_A_w  );\n            Cache_A_sample.x = id - (Cache_A_sample.y *  Cache_A_w);\n            dst() = Cache_A(Cache_A_sample.x, Cache_A_sample.y);\n        \}\n\n        // dst() = float4((float)Cache_B_sample.x, (float)Cache_B_sample.y, 0.0f, 0.0f);\n    \}\n\n\n\n\n\n\n\n\n\}; // kernel"
+  useGPUIfAvailable {{parent.BlinkScript2.useGPUIfAvailable}}
+  rebuild ""
+  rebuild_finalise ""
+  name BlinkScript3
+  xpos -755
+  ypos 935
+ }
+ Dot {
+  name Dot13
+  xpos -721
+  ypos 1053
+ }
+push $Nb7366400
+add_layer {taupo_col taupo_col.red taupo_col.green taupo_col.blue taupo_col.alpha}
+ Shuffle2 {
+  fromInput1 {{0} B}
+  in1 taupo_col
+  fromInput2 {{0} B}
+  mappings "4 taupo_col.red 0 0 rgba.red 0 0 taupo_col.green 0 1 rgba.green 0 1 taupo_col.blue 0 2 rgba.blue 0 2 taupo_col.alpha 0 3 rgba.alpha 0 3"
+  name Shuffle3
+  xpos -755
+  ypos 113
+ }
+push $Nb7367c00
+ Shuffle2 {
+  fromInput1 {{0} B}
+  in1 taupo_col
+  fromInput2 {{0} B}
+  mappings "4 taupo_col.red 0 0 rgba.red 0 0 taupo_col.green 0 1 rgba.green 0 1 taupo_col.blue 0 2 rgba.blue 0 2 taupo_col.alpha 0 3 rgba.alpha 0 3"
+  name Shuffle1
+  xpos -571
+  ypos 315
+ }
+push $Nb7385400
+ BlinkScript {
+  inputs 3
+  recompileCount 15
+  kernelSource "// Taupo Combine\n\nkernel Taupo_Combine_Cache : ImageComputationKernel<ePixelWise> \{\n    Image<eRead, eAccessRandom, eEdgeClamped> format_img; \n    Image<eRead, eAccessRandom, eEdgeClamped> Cache_A; \n    Image<eRead, eAccessRandom, eEdgeClamped> Cache_B; \n    Image<eWrite, eAccessPoint> dst; \n\n    local:\n    int format_w, format_h;\n    int Cache_A_w, Cache_A_h;\n    int Cache_B_w, Cache_B_h;\n    int dst_w, dst_h;\n\n    int Cache_A_count;\n    int Cache_B_count;\n\n\n    void init()\{\n        format_w = format_img.bounds.width();\n        format_h = format_img.bounds.height();\n        Cache_A_w = Cache_A.bounds.width();\n        Cache_A_h = Cache_A.bounds.height();\n        Cache_B_w = Cache_B.bounds.width();\n        Cache_B_h = Cache_B.bounds.height();\n        dst_w = dst.bounds.width();\n        dst_h = dst.bounds.height();    \n        \n        Cache_B_count = Cache_B_w * Cache_B_h;\n    \}\n\n\n    void process(int2 pos)\{\n        int id = pos.x + (pos.y * format_w);\n        int2 Cache_B_sample;\n        int2 Cache_A_sample;\n        \n        if(id < Cache_B_count) \{\n            Cache_B_sample.y = floor( id / Cache_B_w  );\n            Cache_B_sample.x = id - (Cache_B_sample.y *  Cache_B_w);\n            dst() = Cache_B(Cache_B_sample.x, Cache_B_sample.y);\n            // Copy from Cache_B\n        \}\n        else\{\n            id = id - Cache_B_count;\n            Cache_A_sample.y = floor( id / Cache_A_w  );\n            Cache_A_sample.x = id - (Cache_A_sample.y *  Cache_A_w);\n            dst() = Cache_A(Cache_A_sample.x, Cache_A_sample.y);\n        \}\n\n        // dst() = float4((float)Cache_B_sample.x, (float)Cache_B_sample.y, 0.0f, 0.0f);\n    \}\n\n\n\n\n\n\n\n\n\}; // kernel"
+  useGPUIfAvailable {{parent.BlinkScript2.useGPUIfAvailable}}
+  rebuild ""
+  rebuild_finalise ""
+  name BlinkScript1
+  xpos -755
+  ypos 309
+ }
+ Dot {
+  name Dot10
+  xpos -721
+  ypos 427
+ }
+push $Nb7366000
+ Dot {
+  name Dot8
+  xpos -918
+  ypos -260
+ }
+push $Nb7367800
+push $Nb7384c00
+ BlinkScript {
+  inputs 3
+  recompileCount 15
+  kernelSource "// Taupo Combine\n\nkernel Taupo_Combine_Cache : ImageComputationKernel<ePixelWise> \{\n    Image<eRead, eAccessRandom, eEdgeClamped> format_img; \n    Image<eRead, eAccessRandom, eEdgeClamped> Cache_A; \n    Image<eRead, eAccessRandom, eEdgeClamped> Cache_B; \n    Image<eWrite, eAccessPoint> dst; \n\n    local:\n    int format_w, format_h;\n    int Cache_A_w, Cache_A_h;\n    int Cache_B_w, Cache_B_h;\n    int dst_w, dst_h;\n\n    int Cache_A_count;\n    int Cache_B_count;\n\n\n    void init()\{\n        format_w = format_img.bounds.width();\n        format_h = format_img.bounds.height();\n        Cache_A_w = Cache_A.bounds.width();\n        Cache_A_h = Cache_A.bounds.height();\n        Cache_B_w = Cache_B.bounds.width();\n        Cache_B_h = Cache_B.bounds.height();\n        dst_w = dst.bounds.width();\n        dst_h = dst.bounds.height();    \n        \n        Cache_B_count = Cache_B_w * Cache_B_h;\n    \}\n\n\n    void process(int2 pos)\{\n        int id = pos.x + (pos.y * format_w);\n        int2 Cache_B_sample;\n        int2 Cache_A_sample;\n        \n        if(id < Cache_B_count) \{\n            Cache_B_sample.y = floor( id / Cache_B_w  );\n            Cache_B_sample.x = id - (Cache_B_sample.y *  Cache_B_w);\n            dst() = Cache_B(Cache_B_sample.x, Cache_B_sample.y);\n            // Copy from Cache_B\n        \}\n        else\{\n            id = id - Cache_B_count;\n            Cache_A_sample.y = floor( id / Cache_A_w  );\n            Cache_A_sample.x = id - (Cache_A_sample.y *  Cache_A_w);\n            dst() = Cache_A(Cache_A_sample.x, Cache_A_sample.y);\n        \}\n\n        // dst() = float4((float)Cache_B_sample.x, (float)Cache_B_sample.y, 0.0f, 0.0f);\n    \}\n\n\n\n\n\n\n\n\n\}; // kernel"
+  rebuild ""
+  rebuild_finalise ""
+  name BlinkScript2
+  xpos -952
+  ypos -122
+ }
+ Shuffle2 {
+  inputs 2
+  fromInput1 {{1} B A}
+  out1 taupo_col
+  fromInput2 {{0} B A}
+  mappings "4 rgba.red 0 0 taupo_col.red 0 0 rgba.green 0 1 taupo_col.green 0 1 rgba.blue 0 2 taupo_col.blue 0 2 rgba.alpha 0 3 taupo_col.alpha 0 3"
+  name Shuffle4
+  xpos -952
+  ypos 424
+ }
+ Shuffle2 {
+  inputs 2
+  fromInput1 {{1} B A}
+  out1 taupo_utility
+  fromInput2 {{0} B A}
+  mappings "4 rgba.red 0 0 taupo_utility.size 0 0 rgba.green 0 1 taupo_utility.age 0 1 rgba.blue 0 2 taupo_utility.life 0 2 rgba.alpha 0 3 taupo_utility.norm_age 0 3"
+  name Shuffle7
+  xpos -952
+  ypos 1050
+ }
+push $Nb7366800
+ Dot {
+  name Dot7
+  xpos -436
+  ypos 1246
+ }
+ Switch {
+  inputs 2
+  which {{"\[exists parent.input1]"}}
+  name Switch4
+  xpos -952
+  ypos 1243
+ }
+push $Nb7384000
+ Dot {
+  name Dot14
+  xpos -230
+  ypos 1374
+ }
+ Switch {
+  inputs 2
+  which {{"\[exists parent.input0]"}}
+  name Switch3
+  xpos -952
+  ypos 1371
+ }
+ Output {
+  name Output1
+  xpos -952
+  ypos 2002
+ }
+end_group
